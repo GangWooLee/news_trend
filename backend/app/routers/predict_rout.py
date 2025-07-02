@@ -56,6 +56,10 @@ async def predict(
 
     # 3. Chain-of-Thought 예측
     predictions = cot_predict(entities, text)
+    # news_id 모드면, 모든 prediction.asset 을 뉴스 제목으로 설정
+    if request.news_id:
+        for pred in predictions:
+            pred["asset"] = news.title
 
     # 4. dict로 리턴하면 FastAPI가 response_model로 감싸줍니다
     return {

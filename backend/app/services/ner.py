@@ -95,5 +95,8 @@ def extract_entities(text: str) -> List[Dict]:
                 if stripped:
                     final_entities.append({"entity": stripped, "label": ent["label"]})
                 break
-
+    MOVEMENT_KEYWORDS = ["급등", "하락"]
+    for kw in MOVEMENT_KEYWORDS:
+        if kw in text and not any(e["entity"] == kw for e in final_entities):
+            final_entities.append({"entity": kw, "label": "PRICE_MOVE"}) 
     return final_entities
