@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.env
+
+# Node / Frontend
+node_modules/
+dist/
+build/
+
+# IDE / OS
+.vscode/
+.DS_Store
+
+# DB
+*.db
+*.db.bak
+
+# Logs
+*.log
+
+# 테스트 캐시
+.pytest_cache/

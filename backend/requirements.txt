@@ -1,0 +1,17 @@
+pytest
+numpy==1.26.4
+thinc==8.1.12
+fastapi>=0.100.0,<0.116.0
+uvicorn>=0.22.0,<0.36.0
+PyYAML>=6.0
+ariadne>=0.20.0,<0.27.0
+requests>=2.28.0,<2.33.0
+feedparser>=6.0.0,<7.0.0
+SQLAlchemy>=2.0.0,<2.1.0
+graphene>=3.0.0,<4.0.0
+setuptools
+pydantic>=1.10.0,<2.0.0
+transformers>=4.35.0,<4.54.0
+torch>=2.0.0,<2.8.0
+spacy>=3.5.0,<3.9.0
+ko_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/ko_core_news_sm-3.5.0/ko_core_news_sm-3.5.0-py3-none-any.whl
