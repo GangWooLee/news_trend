@@ -54,12 +54,22 @@ async def predict(
     # 2. NER로 개체 추출
     entities = extract_entities(text)
 
-    # 3. Chain-of-Thought 예측
+   # 3. Chain-of-Thought 예측
     predictions = cot_predict(entities, text)
-    # news_id 모드면, 모든 prediction.asset 을 뉴스 제목으로 설정
-    if request.news_id:
+    # ─── news_id 모드일 때 override & 기본 예측 보장 ───
+    if request.news_id is not None:
+        # 1) 기존 prediction들의 asset 덮어쓰기
         for pred in predictions:
             pred["asset"] = news.title
+        # 2) 엔티티가 하나도 없어서 predictions가 비어있다면,
+        #    뉴스 제목만 갖는 기본 prediction을 하나 추가
+        if not predictions:
+            predictions.append({
+                "asset": news.title,
+                "direction": "",      # 기본값
+                "confidence": None,
+                "reasoning": ""
+            })
 
     # 4. dict로 리턴하면 FastAPI가 response_model로 감싸줍니다
     return {
