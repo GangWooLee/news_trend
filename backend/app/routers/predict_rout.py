@@ -37,9 +37,6 @@ class PredictResponse(BaseModel):
     entities: List[Entity]
     predictions: List[Prediction]
 
-def get_request(request: Request):
-    return request
-
 async def _predict_one(payload: PredictRequest, db: Session, request: Request):
     # 1) 텍스트 결정
     if payload.news_id is not None:
@@ -76,8 +73,8 @@ async def _predict_one(payload: PredictRequest, db: Session, request: Request):
 @router.post("/", response_model=PredictResponse)
 async def predict(
     payload: PredictRequest,
-    db: Session = Depends(get_db),
-    request: Request = Depends(get_request)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
     # 시작 시 로드된 모델 확인용(필요시 model_predict 호출)
     _ = request.app.state.predict_model
@@ -86,8 +83,8 @@ async def predict(
 @router.post("/batch", response_model=List[PredictResponse])
 async def predict_batch(
     items: List[PredictRequest],
-    db: Session = Depends(get_db),
-    request: Request = Depends(get_request)
+    request: Request,
+    db: Session = Depends(get_db)
 ):
     results = []
     for item in items:

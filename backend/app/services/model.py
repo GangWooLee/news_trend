@@ -1,52 +1,81 @@
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+# backend/app/services/model.py
 
-# ─── 전역 캐시 변수 ───
+import torch
+from pathlib import Path
+from transformers import (
+    AutoConfig,
+    AutoModelForSequenceClassification,
+    PreTrainedTokenizerFast
+)
+
 _model = None
 _tokenizer = None
-
-# ─── GPU가 가능하면 GPU, 아니면 CPU ───
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def load_model():
     global _model, _tokenizer
     if _model is None:
-        # 토크나이저·모델 로드 (경로는 실제 위치에 맞게 수정)
-        _tokenizer = AutoTokenizer.from_pretrained("models/fine_tuned/predict_model")
-        _model = AutoModelForSequenceClassification.from_pretrained(
-            "models/fine_tuned/predict_model"
-        ).to(device)  # ─── device로 이동 ───
-        _model.eval()
+        # 1) 로컬 모델 폴더 경로 계산
+        project_root = Path(__file__).resolve().parents[3]
+        model_dir = project_root / "models" / "fine_tuned" / "predict_model"
+        if not model_dir.exists():
+            raise RuntimeError(f"모델 폴더가 없습니다: {model_dir}")
+
+        # 2) Config 로드 (로컬 파일만)
+        config = AutoConfig.from_pretrained(
+            str(model_dir),
+            local_files_only=True
+        )
+
+        # 3) 모델 인스턴스 생성 & 가중치 로드
+        model = AutoModelForSequenceClassification.from_config(config).to(device)
+        state_dict = torch.load(model_dir / "pytorch_model.bin", map_location=device)
+        model.load_state_dict(state_dict)
+        model.eval()
+
+        # 4) 토크나이저 직접 로드 (json 파일을 지정)
+        tokenizer = PreTrainedTokenizerFast(
+            tokenizer_file=str(model_dir / "tokenizer.json")
+        )
+
+        _model = model
+        _tokenizer = tokenizer
+
     return (_tokenizer, _model)
 
 def model_predict(tokenizer_model_pair, texts, assets=None):
     tokenizer, model = tokenizer_model_pair
 
-    # ─── 단일 호출도, 배치 호출도 모두 지원 ───
     if isinstance(texts, str):
-        texts = [texts]
-        assets = [assets]
-
-    # ─── assets가 없거나 길이가 다르면 기본값 채우기 ───
+        texts, assets = [texts], [assets]
     if assets is None or len(assets) != len(texts):
         assets = [None] * len(texts)
 
-    # 토큰화 후 device로 이동
-    enc = tokenizer(texts, padding=True, truncation=True, return_tensors="pt").to(device)
+    # 토크나이즈
+    enc = tokenizer(
+        texts,
+        padding=True,
+        truncation=True,
+        return_tensors="pt"
+    )
+    # 장치로 이동
+    for k, v in enc.items():
+        enc[k] = v.to(device)
+
     with torch.no_grad():
         outputs = model(**enc)
         logits = outputs.logits
-        preds = torch.argmax(logits, dim=-1).tolist()
-        confidences = torch.softmax(logits, dim=-1).max(dim=-1).values.tolist()
 
-    # 결과 조립
+    preds = torch.argmax(logits, dim=-1).tolist()
+    confs = torch.softmax(logits, dim=-1).max(dim=-1).values.tolist()
+
     results = []
-    for asset, pred_idx, confidence in zip(assets, preds, confidences):
+    for asset, pred_idx, conf in zip(assets, preds, confs):
         direction = "up" if pred_idx == 1 else "down"
         results.append({
             "asset": asset,
             "direction": direction,
-            "confidence": confidence,
+            "confidence": conf,
             "reasoning": ""
         })
     return results
