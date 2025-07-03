@@ -25,3 +25,4 @@ build/
 .pytest_cache/
 models/fine_tuned/predict_model/
 models/fine_tuned/predict_model/
+models/fine_tuned/predict_model/
