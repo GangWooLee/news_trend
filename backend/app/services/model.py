@@ -21,11 +21,17 @@ def load_model():
         if not model_dir.exists():
             raise RuntimeError(f"모델 폴더가 없습니다: {model_dir}")
 
-        # 2) Config 로드 (로컬 파일만)
-        config = AutoConfig.from_pretrained(
-            str(model_dir),
-            local_files_only=True
-        )
+        # 2) Config 로드
+        #    로컬 config.json이 깨져 있을 수 있으니, 허브에서 기본 config를 가져오도록 합니다.
+        try:
+            config = AutoConfig.from_pretrained(
+                str(model_dir),
+                local_files_only=True
+            )
+        except Exception:
+            # 로컬 로드 실패 시 허브에서 기본 모델의 Config 사용
+            config = AutoConfig.from_pretrained("EleutherAI/gpt-neo-125M")
+
 
         # 3) 모델 인스턴스 생성 & 가중치 로드
         model = AutoModelForSequenceClassification.from_config(config).to(device)
