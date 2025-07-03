@@ -1,0 +1,2 @@
+models/fine_tuned/predict_model/*.safetensors filter=lfs diff=lfs merge=lfs -text
+models/fine_tuned/predict_model/*.bin filter=lfs diff=lfs merge=lfs -text
