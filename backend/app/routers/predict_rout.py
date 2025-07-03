@@ -1,6 +1,6 @@
 # backend/app/routers/predict_rout.py
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Request, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from pydantic import BaseModel, root_validator
@@ -37,42 +37,60 @@ class PredictResponse(BaseModel):
     entities: List[Entity]
     predictions: List[Prediction]
 
-@router.post("/", response_model=PredictResponse)
-async def predict(
-    request: PredictRequest,
-    db: Session = Depends(get_db)
-):
-    # 1. Get text (from DB if news_id provided)
-    if request.news_id:
-        news = get_news_by_id(db, request.news_id)
+def get_request(request: Request):
+    return request
+
+async def _predict_one(payload: PredictRequest, db: Session, request: Request):
+    # 1) 텍스트 결정
+    if payload.news_id is not None:
+        news = get_news_by_id(db, payload.news_id)
         if not news:
             raise HTTPException(status_code=404, detail="News not found")
-        text = news.title + "\n" + news.description
+        text = f"{news.title}\n{news.description}"
+        asset_name = news.title
     else:
-        text = request.text  # 이미 검증되어 있음
+        text = request.text
+        asset_name = None
 
-    # 2. NER로 개체 추출
+    # 2) 엔티티 추출
     entities = extract_entities(text)
 
-   # 3. Chain-of-Thought 예측
+    # 3) Chain-of-Thought 예측
+    #    (또는 model_predict 함수 사용 가능)
     predictions = cot_predict(entities, text)
-    # ─── news_id 모드일 때 override & 기본 예측 보장 ───
-    if request.news_id is not None:
-        # 1) 기존 prediction들의 asset 덮어쓰기
-        for pred in predictions:
-            pred["asset"] = news.title
-        # 2) 엔티티가 하나도 없어서 predictions가 비어있다면,
-        #    뉴스 제목만 갖는 기본 prediction을 하나 추가
+
+    # ─── news_id 모드면 asset 덮어쓰기 및 기본 예측 보장 ───
+    if asset_name is not None:
+        for p in predictions:
+            p["asset"] = asset_name
         if not predictions:
             predictions.append({
-                "asset": news.title,
-                "direction": "",      # 기본값
+                "asset": asset_name,
+                "direction": "",
                 "confidence": None,
                 "reasoning": ""
             })
 
-    # 4. dict로 리턴하면 FastAPI가 response_model로 감싸줍니다
-    return {
-        "entities": entities,
-        "predictions": predictions
-    }
+    return {"entities": entities, "predictions": predictions}
+
+@router.post("/", response_model=PredictResponse)
+async def predict(
+    payload: PredictRequest,
+    db: Session = Depends(get_db),
+    request: Request = Depends(get_request)
+):
+    # 시작 시 로드된 모델 확인용(필요시 model_predict 호출)
+    _ = request.app.state.predict_model
+    return await _predict_one(payload, db, request)
+
+@router.post("/batch", response_model=List[PredictResponse])
+async def predict_batch(
+    items: List[PredictRequest],
+    db: Session = Depends(get_db),
+    request: Request = Depends(get_request)
+):
+    results = []
+    for item in items:
+        res = await _predict_one(item, db, request)
+        results.append(res)
+    return results
