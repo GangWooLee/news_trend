@@ -24,3 +24,4 @@ build/
 # 테스트 캐시
 .pytest_cache/
 models/fine_tuned/predict_model/
+models/fine_tuned/predict_model/
