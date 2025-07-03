@@ -5,7 +5,8 @@ from pathlib import Path
 from transformers import (
     AutoConfig,
     AutoModelForSequenceClassification,
-    PreTrainedTokenizerFast
+    PreTrainedTokenizerFast,
+    AutoTokenizer
 )
 
 _model = None
@@ -33,19 +34,19 @@ def load_model():
             config = AutoConfig.from_pretrained("EleutherAI/gpt-neo-125M")
 
 
-        # 3) 모델 인스턴스 생성 & 가중치 로드
-        model = AutoModelForSequenceClassification.from_config(config).to(device)
-        state_dict = torch.load(model_dir / "pytorch_model.bin", map_location=device)
-        model.load_state_dict(state_dict)
-        model.eval()
+        # 3) 모델과 가중치를 HuggingFace from_pretrained으로 한 번에 로드
+        _model = AutoModelForSequenceClassification.from_pretrained(
+            str(model_dir),
+            config=config,
+            local_files_only=True
+        ).to(device)
+        _model.eval()
 
-        # 4) 토크나이저 직접 로드 (json 파일을 지정)
-        tokenizer = PreTrainedTokenizerFast(
-            tokenizer_file=str(model_dir / "tokenizer.json")
+        # 4) 토크나이저도 from_pretrained으로 로드
+        _tokenizer = AutoTokenizer.from_pretrained(
+            str(model_dir),
+            local_files_only=True
         )
-
-        _model = model
-        _tokenizer = tokenizer
 
     return (_tokenizer, _model)
 

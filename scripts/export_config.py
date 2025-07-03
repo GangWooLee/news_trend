@@ -1,18 +1,17 @@
-# scripts/export_config.py
+# scripts/export_model.py
 
-from transformers import AutoConfig
+from transformers import AutoModelForSequenceClassification, AutoTokenizer
 from pathlib import Path
 
-# 1) 사용할 베이스 모델 이름
-BASE_MODEL = "EleutherAI/gpt-neo-125M"
-# 2) 내보낼 디렉터리 (기존 predict_model 경로)
-TARGET_DIR = Path("models/fine_tuned/predict_model")
+MODEL_NAME = "EleutherAI/gpt-neo-125M"   # 혹은 fine-tuned 모델 허브 ID
+SAVE_DIR = Path("models/fine_tuned/predict_model")
 
-if not TARGET_DIR.exists():
-    raise RuntimeError(f"{TARGET_DIR} 폴더가 없습니다.")
+# 원격에서 모델·토크나이저 로드
+tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME)
+model     = AutoModelForSequenceClassification.from_pretrained(MODEL_NAME)
 
-# 3) Config 로드 & 저장
-config = AutoConfig.from_pretrained(BASE_MODEL)
-config.save_pretrained(str(TARGET_DIR))
+# 내보내기
+tokenizer.save_pretrained(SAVE_DIR)
+model.save_pretrained(SAVE_DIR)
 
-print(f"✅ {BASE_MODEL} 의 config.json 을 {TARGET_DIR} 에 재생성했습니다.")
+print("✅ 모델과 토크나이저를 올바르게 저장했습니다.")
