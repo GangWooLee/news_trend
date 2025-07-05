@@ -19,7 +19,7 @@ async def search_news(
     q: str = Query(..., description="검색 키워드"),
     display: int = Query(10, ge=1, le=100),
     start: int = Query(1, ge=1),
-    sort: str = Query("date", regex="^(date|sim)$")
+    sort: str = Query("date", pattern="^(date|sim)$")
 ) -> List[Dict]:
     try:
         return fetch_news(query=q, display=display, start=start, sort=sort)

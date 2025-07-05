@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, create_engine
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from datetime import datetime
 from backend.app.config import settings
 
